@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="ru" class="dark cyberpunk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#08070C" />
+  <title>Nocturne — Тренажер иностранных слов</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    html, body {
+      min-height: 100dvh;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior-y: none;
+    }
+    input, textarea {
+      user-select: text;
+      -webkit-user-select: text;
+    }
+    .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+    .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+    .main-safe { padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px)); }
+
+    /* Cyberpunk 2077 Theme */
+    html.cyberpunk body { background-color: #08070c; color: #fcee0a; }
+    html.cyberpunk .app-shell {
+      background-color: #08070c;
+      background-image: radial-gradient(circle at 50% 0%, rgba(255, 0, 60, 0.14), transparent 55%),
+        repeating-linear-gradient(0deg, rgba(0, 240, 255, 0.02) 0px, rgba(0, 240, 255, 0.02) 1px, transparent 1px, transparent 3px);
+    }
+    html.cyberpunk .app-container { background-color: #0b0912; border-color: rgba(255, 0, 60, 0.45); }
+    html.cyberpunk header { background-color: rgba(11, 9, 18, 0.94); border-bottom: 1px solid #ff003c; box-shadow: 0 2px 14px rgba(255, 0, 60, 0.18); }
+    html.cyberpunk nav { background-color: rgba(11, 9, 18, 0.96); border-top: 1px solid #00f0ff; box-shadow: 0 -2px 16px rgba(0, 240, 255, 0.15); }
+    html.cyberpunk .cyber-card {
+      background-color: #120f1d !important;
+      border-color: rgba(0, 240, 255, 0.38) !important;
+      border-radius: 0 !important;
+      clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+    }
+    html.cyberpunk input, html.cyberpunk select, html.cyberpunk textarea {
+      background-color: #07050c !important;
+      border-color: rgba(0, 240, 255, 0.45) !important;
+      color: #00f0ff !important;
+      border-radius: 0 !important;
+      clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+    }
+    html.cyberpunk main button, html.cyberpunk nav button {
+      border-radius: 0 !important;
+      clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+    }
+    html.cyberpunk .btn-primary, html.cyberpunk .tab-active {
+      background-color: #fcee0a !important;
+      color: #08070c !important;
+      font-weight: 800 !important;
+      box-shadow: 3px 3px 0px #00f0ff;
+    }
+    html.cyberpunk .btn-secondary {
+      background-color: #181426 !important;
+      border-color: rgba(0, 240, 255, 0.4) !important;
+      color: #f8fafc !important;
+    }
+  </style>
+</head>
+<body class="bg-neutral-100 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 antialiased">
+<div id="app" class="app-shell min-h-[100dvh] flex flex-col items-center">
+  <div class="app-container w-full max-w-md min-h-[100dvh] flex flex-col bg-neutral-50 dark:bg-neutral-950 sm:border-x sm:border-neutral-200 dark:sm:border-neutral-800 relative">
+    <!-- Top Header -->
+    <header class="sticky top-0 z-30 h-14 px-3.5 bg-neutral-50/90 dark:bg-neutral-950/90 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between gap-2 pt-safe">
+      <span :class="['text-base font-extrabold tracking-tight', theme === 'cyberpunk' ? 'text-[#FCEE0A]' : 'text-neutral-900 dark:text-neutral-100']">Nocturne</span>
+      <div class="text-[11px] text-neutral-500 dark:text-neutral-400 tabular-nums">
+        Слов: <strong class="text-neutral-900 dark:text-neutral-100">{{ activeWords.length }}</strong> · Выучено: <strong :class="theme === 'cyberpunk' ? 'text-[#00F0FF]' : 'text-neutral-900 dark:text-neutral-100'">{{ masteredCount }}</strong>
+      </div>
+      <div class="flex items-center gap-1">
+        <button @click="setTheme('light')" :class="['min-h-[40px] px-2 rounded-lg text-xs font-semibold', theme === 'light' ? 'bg-neutral-900 text-white' : 'text-neutral-500']">Свет</button>
+        <button @click="setTheme('dark')" :class="['min-h-[40px] px-2 rounded-lg text-xs font-semibold', theme === 'dark' ? 'bg-neutral-100 text-neutral-900' : 'text-neutral-400']">Тьма</button>
+        <button @click="setTheme('cyberpunk')" :class="['min-h-[40px] px-2.5 text-[11px] font-extrabold uppercase', theme === 'cyberpunk' ? 'bg-[#FCEE0A] text-[#08070C] shadow-[2px_2px_0px_#FF003C]' : 'bg-neutral-200 dark:bg-neutral-800 rounded-lg']">⚡ 2077</button>
+      </div>
+    </header>
+
+    <!-- Main View -->
+    <main class="flex-1 px-4 pt-4 main-safe space-y-4">
+      <!-- TAB 1: СЛОВАРЬ -->
+      <div v-if="activeTab === 'dictionary'" class="space-y-4">
+        <section class="cyber-card rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-3.5 space-y-3">
+          <input v-model="searchQuery" type="search" placeholder="Поиск по слову или переводу..." class="w-full min-h-[48px] px-3.5 rounded-xl bg-neutral-100 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-sm" />
+          <div class="grid grid-cols-2 gap-2.5">
+            <select v-model="selectedPos" class="w-full min-h-[48px] px-3 rounded-xl bg-neutral-100 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs">
+              <option value="all">Все части речи</option>
+              <option v-for="p in ['noun','verb','adj','adv','phrase','other']" :key="p" :value="p">{{ p }}</option>
+            </select>
+            <select v-model="selectedTopic" class="w-full min-h-[48px] px-3 rounded-xl bg-neutral-100 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs">
+              <option value="all">Все темы ({{ availableTopics.length }})</option>
+              <option v-for="t in availableTopics" :key="t" :value="t">{{ t }}</option>
+            </select>
+          </div>
+          <div class="text-xs text-neutral-500 dark:text-neutral-400 tabular-nums">Найдено: <strong>{{ filteredWords.length }}</strong> из {{ activeWords.length }}</div>
+        </section>
+
+        <div class="space-y-2.5">
+          <article v-for="item in filteredWords" :key="item.id" class="cyber-card rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-3.5 flex items-center justify-between gap-3">
+            <div class="space-y-1">
+              <div class="flex items-baseline gap-2 flex-wrap">
+                <h3 class="text-base font-bold text-neutral-900 dark:text-neutral-100" v-html="formatWordHtml(item.word, item.lang)"></h3>
+                <span class="text-xs text-neutral-500 dark:text-neutral-400 font-mono">{{ item.transcription }}</span>
+              </div>
+              <p class="text-sm text-neutral-700 dark:text-neutral-200 font-medium">{{ item.translation }}</p>
+              <div class="text-[11px] text-neutral-500 dark:text-neutral-400">{{ item.topic }} · {{ item.pos }} · Прогресс {{ item.progress }}/3</div>
+            </div>
+            <button @click="speak(item.word, item.lang)" class="btn-secondary min-h-[48px] min-w-[48px] rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 flex items-center justify-center">🔊</button>
+          </article>
+        </div>
+      </div>
+
+      <!-- TAB 2: ТРЕНИРОВКА -->
+      <div v-if="activeTab === 'training'" class="space-y-4">
+        <div v-if="activeWords.length < 4" class="cyber-card rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-6 text-center space-y-3">
+          <p class="text-sm font-bold">Для тренировки нужно минимум 4 активных слова</p>
+          <button @click="activeTab = 'packs'" class="btn-primary min-h-[48px] px-5 rounded-xl bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 text-xs font-semibold">Перейти к пакетам</button>
+        </div>
+        <template v-else>
+          <section class="cyber-card rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-3 space-y-3">
+            <div class="grid grid-cols-4 gap-1.5">
+              <button v-for="m in [{k:'adaptive',l:'Заучивание'},{k:'flashcards',l:'Карточки'},{k:'blitz',l:'Блиц 60с'},{k:'match',l:'Пары'}]" :key="m.k" @click="switchMode(m.k)" :class="['min-h-[48px] rounded-xl text-[11px] font-semibold', mode === m.k ? 'tab-active bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900' : 'btn-secondary bg-neutral-100 dark:bg-neutral-800']">{{ m.l }}</button>
+            </div>
+            <div class="flex items-center justify-between pt-2 border-t border-neutral-200 dark:border-neutral-800">
+              <span class="text-xs text-neutral-500">Направление:</span>
+              <button @click="toggleDirection" class="btn-secondary min-h-[48px] px-3.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-xs font-semibold">
+                {{ direction === 'word-to-translation' ? 'Слово → Перевод' : 'Перевод → Слово' }}
+              </button>
+            </div>
+          </section>
+
+          <!-- Mode 1: Adaptive Quiz -->
+          <section v-if="mode === 'adaptive' && quizQuestion" class="cyber-card rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-5 space-y-4">
+            <div class="flex justify-between text-xs text-neutral-500">
+              <span>{{ quizQuestion.target.topic }} · {{ quizQuestion.target.pos }}</span>
+              <span>Усвоение: {{ getWordProgress(quizQuestion.target) }}/3</span>
+            </div>
+            <div class="py-4 text-center space-y-2">
+              <div v-if="direction === 'word-to-translation'" class="text-2xl font-extrabold text-neutral-900 dark:text-neutral-100" v-html="formatWordHtml(quizQuestion.target.word, quizQuestion.target.lang)"></div>
+              <div v-else class="text-2xl font-extrabold text-neutral-900 dark:text-neutral-100">{{ quizQuestion.target.translation }}</div>
+              <div v-if="direction === 'word-to-translation'" class="text-xs text-neutral-500 font-mono">{{ quizQuestion.target.transcription }}</div>
+              <button v-if="direction === 'word-to-translation'" @click="speak(quizQuestion.target.word, quizQuestion.target.lang)" class="btn-secondary min-h-[48px] min-w-[48px] rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700">🔊</button>
+            </div>
+            <div class="space-y-2.5">
+              <button v-for="opt in quizQuestion.options" :key="opt.id" :disabled="selectedOptionId !== null" @click="answerQuiz(opt)" :class="['w-full min-h-[52px] px-4 py-3 rounded-xl border text-left text-sm font-medium', getQuizOptionClass(opt)]">
+                <span v-if="direction === 'word-to-translation'">{{ opt.translation }}</span>
+                <span v-else v-html="formatWordHtml(opt.word, opt.lang)"></span>
+              </button>
+            </div>
+            <div v-if="selectedOptionId && selectedOptionId !== quizQuestion.target.id" class="flex justify-between items-center pt-2">
+              <span class="text-xs text-rose-500">Ошибка — прогресс сброшен до 0/3</span>
+              <button @click="nextQuiz" class="btn-primary min-h-[48px] px-5 rounded-xl bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 text-xs font-semibold">Дальше →</button>
+            </div>
+          </section>
+
+          <!-- Mode 2: Flashcards -->
+          <section v-if="mode === 'flashcards'" class="space-y-4">
+            <div v-if="currentCard" @click="isFlipped = !isFlipped" class="cyber-card rounded-3xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-6 min-h-[240px] flex flex-col justify-between cursor-pointer text-center">
+              <div class="flex justify-between text-xs text-neutral-500">
+                <span>Карточка {{ cardIndex + 1 }} / {{ activeWords.length }}</span>
+                <span>Прогресс {{ currentCard.progress }}/3</span>
+              </div>
+              <div class="my-6 space-y-2">
+                <div v-if="(!isFlipped && direction === 'word-to-translation') || (isFlipped && direction === 'translation-to-word')" class="text-2xl font-extrabold text-neutral-900 dark:text-neutral-100" v-html="formatWordHtml(currentCard.word, currentCard.lang)"></div>
+                <div v-else class="text-2xl font-extrabold text-neutral-800 dark:text-neutral-200">{{ currentCard.translation }}</div>
+              </div>
+              <div class="text-xs text-neutral-500">Нажмите на карточку, чтобы перевернуть</div>
+            </div>
+            <div v-if="currentCard" class="grid grid-cols-2 gap-3">
+              <button @click="decideCard(false)" class="min-h-[52px] rounded-2xl bg-rose-600/20 border border-rose-500/50 text-rose-300 font-bold text-sm">Повторить</button>
+              <button @click="decideCard(true)" class="min-h-[52px] rounded-2xl bg-emerald-600 text-white font-bold text-sm">Знаю</button>
+            </div>
+          </section>
+
+          <!-- Mode 3: Blitz 60s -->
+          <section v-if="mode === 'blitz'" class="cyber-card rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-5 space-y-4 text-center">
+            <div class="flex justify-between text-xs tabular-nums">
+              <span class="font-mono font-bold">{{ blitzTimeLeft }} сек</span>
+              <span>Счет: <strong>{{ blitzScore }}</strong></span>
+              <span>Рекорд: <strong>{{ blitzHighScore }}</strong></span>
+            </div>
+            <div v-if="!blitzActive" class="py-6 space-y-4">
+              <button @click="startBlitz" class="btn-primary min-h-[52px] px-6 rounded-2xl bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 font-bold text-sm">Начать Блиц (60 сек)</button>
+            </div>
+            <div v-else-if="blitzItem" class="space-y-4">
+              <div class="py-6 space-y-2">
+                <div class="text-2xl font-extrabold text-neutral-900 dark:text-neutral-100" v-html="formatWordHtml(blitzItem.target.word, blitzItem.target.lang)"></div>
+                <div class="text-xs text-neutral-500">означает ли это</div>
+                <div class="text-xl font-bold text-neutral-800 dark:text-neutral-200">{{ blitzItem.shown.translation }}</div>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <button @click="answerBlitz(false)" class="min-h-[54px] rounded-2xl bg-rose-600/20 border border-rose-500 text-rose-300 font-bold">Неверно</button>
+                <button @click="answerBlitz(true)" class="min-h-[54px] rounded-2xl bg-emerald-600 text-white font-bold">Верно</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- Mode 4: Match Pairs -->
+          <section v-if="mode === 'match'" class="cyber-card rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-4 space-y-4">
+            <div class="flex justify-between items-center">
+              <div class="flex gap-1.5">
+                <button @click="initMatch(8)" :class="['min-h-[48px] px-3 rounded-xl text-xs font-semibold', matchSize === 8 ? 'tab-active bg-neutral-900 text-white' : 'btn-secondary']">8 элементов</button>
+                <button @click="initMatch(12)" :class="['min-h-[48px] px-3 rounded-xl text-xs font-semibold', matchSize === 12 ? 'tab-active bg-neutral-900 text-white' : 'btn-secondary']">12 элементов</button>
+              </div>
+              <button @click="initMatch(matchSize)" class="btn-secondary min-h-[48px] px-3 rounded-xl text-xs">Заново</button>
+            </div>
+            <div :class="['grid gap-2.5', matchSize === 12 ? 'grid-cols-3' : 'grid-cols-2']">
+              <button v-for="tile in matchTiles" :key="tile.tileId" :disabled="tile.matched" @click="tapTile(tile)" :class="['min-h-[64px] p-2.5 rounded-xl border text-xs font-semibold', tile.matched ? 'opacity-25 pointer-events-none' : selectedTileId === tile.tileId ? 'tab-active bg-neutral-900 text-white' : 'btn-secondary bg-neutral-100 dark:bg-neutral-950']">
+                <span v-if="tile.type === 'word'" v-html="formatWordHtml(tile.text, tile.lang)"></span>
+                <span v-else>{{ tile.text }}</span>
+              </button>
+            </div>
+          </section>
+        </template>
+      </div>
+
+      <!-- TAB 3: ПАКЕТЫ -->
+      <div v-if="activeTab === 'packs'" class="space-y-4">
+        <section class="cyber-card rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-4 space-y-3">
+          <div class="flex justify-between items-center gap-2">
+            <div>
+              <h2 class="text-base font-bold text-neutral-900 dark:text-neutral-100">Пакеты слов</h2>
+              <p class="text-xs text-neutral-500">Активно слов: {{ activeWords.length }}</p>
+            </div>
+            <button @click="showPromptModal = true" class="btn-primary min-h-[48px] px-4 rounded-xl bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 text-xs font-semibold">Промпт для ИИ</button>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <button @click="selectAllPacks(true)" class="btn-secondary min-h-[48px] rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-xs font-semibold">Выбрать все</button>
+            <button @click="selectAllPacks(false)" class="btn-secondary min-h-[48px] rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-xs font-semibold">Снять выбор</button>
+          </div>
+        </section>
+
+        <div class="space-y-2.5">
+          <div v-for="pack in packs" :key="pack.id" class="cyber-card rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-3.5 flex items-center justify-between gap-3">
+            <button @click="pack.active = !pack.active; savePacks()" class="flex-1 min-h-[48px] text-left flex items-center gap-3">
+              <input type="checkbox" :checked="pack.active" class="w-5 h-5 pointer-events-none" />
+              <div>
+                <div class="text-sm font-bold text-neutral-900 dark:text-neutral-100">{{ pack.packName }}</div>
+                <div class="text-xs text-neutral-500">{{ pack.lang }} · {{ pack.words.length }} слов</div>
+              </div>
+            </button>
+            <button @click="deletePack(pack.id)" class="btn-secondary min-h-[48px] min-w-[48px] rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-xs">🗑</button>
+          </div>
+        </div>
+
+        <section class="cyber-card rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-4 space-y-3">
+          <h3 class="text-sm font-bold text-neutral-900 dark:text-neutral-100">Импорт JSON</h3>
+          <textarea v-model="importJsonText" rows="4" placeholder='{"packName": "Мои слова", "lang": "deutsch", "words": [{"word": "der Hund", "translation": "собака", "transcription": "[hʊnt]", "pos": "noun", "topic": "Природа"}]}' class="w-full rounded-xl p-3 text-xs font-mono border"></textarea>
+          <button @click="importJson" class="btn-primary w-full min-h-[48px] rounded-xl bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 text-sm font-semibold">Импортировать JSON</button>
+        </section>
+      </div>
+    </main>
+
+    <!-- AI Prompt Modal -->
+    <div v-if="showPromptModal" class="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
+      <div class="cyber-card w-full max-w-md rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-700 p-5 space-y-4">
+        <div class="flex justify-between items-center">
+          <h3 class="text-base font-bold text-neutral-900 dark:text-neutral-100">Промпт для ИИ</h3>
+          <button @click="showPromptModal = false" class="min-h-[48px] min-w-[48px]">✕</button>
+        </div>
+        <div class="p-3 rounded-xl bg-neutral-100 dark:bg-neutral-950 text-xs font-mono select-all break-words">{{ aiPrompt }}</div>
+        <button @click="copyPrompt" class="btn-primary w-full min-h-[48px] rounded-xl bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 text-sm font-bold">Скопировать в буфер</button>
+      </div>
+    </div>
+
+    <!-- Bottom Navigation: Словарь -> Тренировка -> Пакеты -->
+    <nav aria-label="Основная навигация" class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-40 bg-white/95 dark:bg-neutral-950/95 border-t border-neutral-200 dark:border-neutral-800 pb-safe">
+      <div class="grid grid-cols-3 px-2 py-1.5 gap-1">
+        <button @click="activeTab = 'dictionary'" :class="['min-h-[48px] rounded-xl flex flex-col items-center justify-center text-xs font-semibold', activeTab === 'dictionary' ? 'tab-active bg-neutral-200 dark:bg-neutral-800' : 'text-neutral-500']">Словарь ({{ activeWords.length }})</button>
+        <button @click="activeTab = 'training'" :class="['min-h-[48px] rounded-xl flex flex-col items-center justify-center text-xs font-semibold', activeTab === 'training' ? 'tab-active bg-neutral-200 dark:bg-neutral-800' : 'text-neutral-500']">Тренировка</button>
+        <button @click="activeTab = 'packs'" :class="['min-h-[48px] rounded-xl flex flex-col items-center justify-center text-xs font-semibold', activeTab === 'packs' ? 'tab-active bg-neutral-200 dark:bg-neutral-800' : 'text-neutral-500']">Пакеты</button>
+      </div>
+    </nav>
+  </div>
+</div>
+
+<script>
+const ALLOWED_TOPICS = ["Люди", "Еда", "Дом", "Город", "Работа", "Здоровье", "Природа", "Технологии", "Досуг", "Общество", "Одежда", "Абстракции", "Действия", "Сленг", "Другое"];
+
+const DEFAULT_PACKS = [
+  {
+    id: 'demo-deutsch-base-30',
+    packName: 'Немецкий: Базовый словарь A1–A2',
+    lang: 'deutsch',
+    active: true,
+    words: [
+      { word: 'der Hund', translation: 'собака', transcription: '[hʊnt]', pos: 'noun', topic: 'Природа' },
+      { word: 'die Katze', translation: 'кошка', transcription: '[ˈkat͡sə]', pos: 'noun', topic: 'Природа' },
+      { word: 'das Pferd', translation: 'лошадь', transcription: '[p͡feːɐ̯t]', pos: 'noun', topic: 'Природа' },
+      { word: 'der Vogel', translation: 'птица', transcription: '[ˈfoːɡl̩]', pos: 'noun', topic: 'Природа' },
+      { word: 'die Maus', translation: 'мышь', transcription: '[maʊ̯s]', pos: 'noun', topic: 'Природа' },
+      { word: 'das Kaninchen', translation: 'кролик', transcription: '[kaˈniːnçən]', pos: 'noun', topic: 'Природа' },
+      { word: 'füttern', translation: 'кормить', transcription: '[ˈfʏtɐn]', pos: 'verb', topic: 'Природа' },
+      { word: 'der Apfel', translation: 'яблоко', transcription: '[ˈap͡fl̩]', pos: 'noun', topic: 'Еда' },
+      { word: 'die Milch', translation: 'молоко', transcription: '[mɪlç]', pos: 'noun', topic: 'Еда' },
+      { word: 'das Brot', translation: 'хлеб', transcription: '[bʁoːt]', pos: 'noun', topic: 'Еда' },
+      { word: 'der Kaffee', translation: 'кофе', transcription: '[ˈkafe]', pos: 'noun', topic: 'Еда' },
+      { word: 'das Wasser', translation: 'вода', transcription: '[ˈvasɐ]', pos: 'noun', topic: 'Еда' },
+      { word: 'kochen', translation: 'готовить (еду)', transcription: '[ˈkɔxn̩]', pos: 'verb', topic: 'Еда' },
+      { word: 'lecker', translation: 'вкусный', transcription: '[ˈlɛkɐ]', pos: 'adj', topic: 'Еда' },
+      { word: 'Guten Appetit!', translation: 'Приятного аппетита!', transcription: '[ˈɡuːtn̩ apəˈtiːt]', pos: 'phrase', topic: 'Еда' },
+      { word: 'der Tisch', translation: 'стол', transcription: '[tɪʃ]', pos: 'noun', topic: 'Дом' },
+      { word: 'die Tür', translation: 'дверь', transcription: '[tyːɐ̯]', pos: 'noun', topic: 'Дом' },
+      { word: 'das Fenster', translation: 'окно', transcription: '[ˈfɛnstɐ]', pos: 'noun', topic: 'Дом' },
+      { word: 'der Schlüssel', translation: 'ключ', transcription: '[ˈʃlʏsl̩]', pos: 'noun', topic: 'Дом' },
+      { word: 'die Wohnung', translation: 'квартира', transcription: '[ˈvoːnʊŋ]', pos: 'noun', topic: 'Дом' },
+      { word: 'schlafen', translation: 'спать', transcription: '[ˈʃlaːfn̩]', pos: 'verb', topic: 'Дом' },
+      { word: 'gemütlich', translation: 'уютный', transcription: '[ɡəˈmyːtlɪç]', pos: 'adj', topic: 'Дом' },
+      { word: 'zu Hause', translation: 'дома', transcription: '[t͡su ˈhaʊ̯zə]', pos: 'adv', topic: 'Дом' },
+      { word: 'der Bahnhof', translation: 'вокзал', transcription: '[ˈbaːnhoːf]', pos: 'noun', topic: 'Город' },
+      { word: 'die Straße', translation: 'улица', transcription: '[ˈʃtʁaːsə]', pos: 'noun', topic: 'Город' },
+      { word: 'das Ticket', translation: 'билет', transcription: '[ˈtɪkət]', pos: 'noun', topic: 'Город' },
+      { word: 'fahren', translation: 'ехать', transcription: '[ˈfaːʁən]', pos: 'verb', topic: 'Город' },
+      { word: 'schnell', translation: 'быстрый', transcription: '[ʃnɛl]', pos: 'adj', topic: 'Город' },
+      { word: 'geradeaus', translation: 'прямо', transcription: '[ɡəˈʁaːdəˌʔaʊ̯s]', pos: 'adv', topic: 'Город' },
+      { word: 'Entschuldigung', translation: 'Извините', transcription: '[ɛntˈʃʊldɪɡʊŋ]', pos: 'phrase', topic: 'Город' }
+    ]
+  },
+  {
+    id: 'demo-en-essential-30',
+    packName: 'English: Живой английский B1',
+    lang: 'en',
+    active: true,
+    words: [
+      { word: 'feature', translation: 'функция, особенность', transcription: '[ˈfiːtʃər]', pos: 'noun', topic: 'Технологии' },
+      { word: 'database', translation: 'база данных', transcription: '[ˈdeɪtəbeɪs]', pos: 'noun', topic: 'Технологии' },
+      { word: 'network', translation: 'сеть', transcription: '[ˈnetwɜːrk]', pos: 'noun', topic: 'Технологии' },
+      { word: 'update', translation: 'обновлять', transcription: '[ʌpˈdeɪt]', pos: 'verb', topic: 'Технологии' },
+      { word: 'connect', translation: 'подключать', transcription: '[kəˈnekt]', pos: 'verb', topic: 'Технологии' },
+      { word: 'reliable', translation: 'надежный', transcription: '[rɪˈlaɪəbl]', pos: 'adj', topic: 'Технологии' },
+      { word: 'seamlessly', translation: 'бесшовно, гладко', transcription: '[ˈsiːmləsli]', pos: 'adv', topic: 'Технологии' },
+      { word: 'out of the box', translation: 'сразу готовый к работе', transcription: '[aʊt əv ðə bɑːks]', pos: 'phrase', topic: 'Технологии' },
+      { word: 'deadline', translation: 'крайний срок', transcription: '[ˈdedlaɪn]', pos: 'noun', topic: 'Работа' },
+      { word: 'colleague', translation: 'коллега', transcription: '[ˈkɑːliːɡ]', pos: 'noun', topic: 'Работа' },
+      { word: 'salary', translation: 'зарплата', transcription: '[ˈsæləri]', pos: 'noun', topic: 'Работа' },
+      { word: 'achieve', translation: 'достигать', transcription: '[əˈtʃiːv]', pos: 'verb', topic: 'Работа' },
+      { word: 'negotiate', translation: 'вести переговоры', transcription: '[nɪˈɡoʊʃieɪt]', pos: 'verb', topic: 'Работа' },
+      { word: 'efficient', translation: 'эффективный', transcription: '[ɪˈfɪʃnt]', pos: 'adj', topic: 'Работа' },
+      { word: 'remotely', translation: 'удаленно', transcription: '[rɪˈmoʊtli]', pos: 'adv', topic: 'Работа' },
+      { word: 'keep in touch', translation: 'оставаться на связи', transcription: '[kiːp ɪn tʌtʃ]', pos: 'phrase', topic: 'Работа' },
+      { word: 'luggage', translation: 'багаж', transcription: '[ˈlʌɡɪdʒ]', pos: 'noun', topic: 'Досуг' },
+      { word: 'departure', translation: 'отправление, вылет', transcription: '[dɪˈpɑːrtʃər]', pos: 'noun', topic: 'Досуг' },
+      { word: 'destination', translation: 'пункт назначения', transcription: '[ˌdestɪˈneɪʃn]', pos: 'noun', topic: 'Досуг' },
+      { word: 'explore', translation: 'исследовать', transcription: '[ɪkˈsplɔːr]', pos: 'verb', topic: 'Досуг' },
+      { word: 'breathtaking', translation: 'захватывающий дух', transcription: '[ˈbreθteɪkɪŋ]', pos: 'adj', topic: 'Досуг' },
+      { word: 'abroad', translation: 'за границей', transcription: '[əˈbrɔːd]', pos: 'adv', topic: 'Досуг' },
+      { word: 'check in', translation: 'зарегистрироваться', transcription: '[tʃek ɪn]', pos: 'phrase', topic: 'Досуг' },
+      { word: 'confidence', translation: 'уверенность', transcription: '[ˈkɑːnfɪdəns]', pos: 'noun', topic: 'Абстракции' },
+      { word: 'impression', translation: 'впечатление', transcription: '[ɪmˈpreʃn]', pos: 'noun', topic: 'Абстракции' },
+      { word: 'inspire', translation: 'вдохновлять', transcription: '[ɪnˈspaɪər]', pos: 'verb', topic: 'Люди' },
+      { word: 'curious', translation: 'любопытный', transcription: '[ˈkjʊriəs]', pos: 'adj', topic: 'Люди' },
+      { word: 'grateful', translation: 'благодарный', transcription: '[ˈɡreɪtfl]', pos: 'adj', topic: 'Люди' },
+      { word: 'honestly', translation: 'честно говоря', transcription: '[ˈɑːnɪstli]', pos: 'adv', topic: 'Общество' },
+      { word: 'make sense', translation: 'иметь смысл', transcription: '[meɪk sens]', pos: 'phrase', topic: 'Абстракции' }
+    ]
+  }
+];
+
+const { createApp } = Vue;
+createApp({
+  data() {
+    return {
+      theme: localStorage.getItem('nocturne_theme') || 'cyberpunk',
+      activeTab: 'dictionary',
+      packs: JSON.parse(localStorage.getItem('nocturne_packs_v2') || 'null') || DEFAULT_PACKS,
+      progressMap: JSON.parse(localStorage.getItem('nocturne_progress') || '{}'),
+      searchQuery: '',
+      selectedPos: 'all',
+      selectedTopic: 'all',
+      mode: 'adaptive',
+      direction: 'word-to-translation',
+      quizQuestion: null,
+      selectedOptionId: null,
+      cardIndex: 0,
+      isFlipped: false,
+      blitzActive: false,
+      blitzTimeLeft: 60,
+      blitzScore: 0,
+      blitzHighScore: Number(localStorage.getItem('nocturne_blitz_high') || 0),
+      blitzItem: null,
+      blitzTimer: null,
+      matchSize: 8,
+      matchTiles: [],
+      selectedTileId: null,
+      importJsonText: '',
+      showPromptModal: false,
+      aiPrompt: 'Сгенерируй JSON со словами для изучения. Язык: [УКАЖИ ЯЗЫК, для немецкого пиши строго deutsch]. Тема: [УКАЖИ ТЕМУ]. Количество слов: [ЧИСЛО]. Выдай ответ строго в формате валидного JSON-кода без лишнего текста. Правила: 1. Поле pos принимает только значения: noun, verb, adj, adv, phrase, other. 2. Если язык deutsch, для существительных (noun) в поле word обязательно пиши артикль перед словом (der, die, das). 3. Поле topic должно принимать СТРОГО одно из следующих значений (придумывать свои запрещено): "Люди", "Еда", "Дом", "Город", "Работа", "Здоровье", "Природа", "Технологии", "Досуг", "Общество", "Одежда", "Абстракции", "Действия", "Сленг", "Другое". Шаблон: {"packName": "Название", "lang": "deutsch", "words": [{"word": "der Hund", "translation": "собака", "transcription": "[hʊnt]", "pos": "noun", "topic": "Природа"}]}'
+    };
+  },
+  computed: {
+    activeWords() {
+      const list = [];
+      this.packs.forEach(p => {
+        if (!p.active) return;
+        p.words.forEach((w, idx) => {
+          const key = (p.lang + '::' + w.word + '::' + w.translation).toLowerCase();
+          list.push({ ...w, id: p.id + '_' + idx, lang: p.lang, key, progress: this.progressMap[key] || 0 });
+        });
+      });
+      return list;
+    },
+    masteredCount() { return this.activeWords.filter(w => w.progress >= 3).length; },
+    availableTopics() { return [...new Set(this.activeWords.map(w => w.topic))]; },
+    filteredWords() {
+      const q = this.searchQuery.trim().toLowerCase();
+      return this.activeWords.filter(w => {
+        if (this.selectedPos !== 'all' && w.pos !== this.selectedPos) return false;
+        if (this.selectedTopic !== 'all' && w.topic !== this.selectedTopic) return false;
+        if (q && !w.word.toLowerCase().includes(q) && !w.translation.toLowerCase().includes(q)) return false;
+        return true;
+      });
+    },
+    currentCard() { return this.activeWords[this.cardIndex % Math.max(1, this.activeWords.length)] || null; }
+  },
+  mounted() {
+    this.setTheme(this.theme);
+    this.nextQuiz();
+    this.initMatch(8);
+  },
+  methods: {
+    setTheme(t) {
+      this.theme = t;
+      localStorage.setItem('nocturne_theme', t);
+      const r = document.documentElement;
+      r.classList.remove('dark', 'cyberpunk');
+      if (t === 'cyberpunk') r.classList.add('dark', 'cyberpunk');
+      else if (t === 'dark') r.classList.add('dark');
+    },
+    formatWordHtml(word, lang) {
+      if ((lang || '').toLowerCase() !== 'deutsch') return word;
+      if (word.toLowerCase().startsWith('der ')) return '<span class="text-blue-400 font-bold mr-1">der</span>' + word.slice(4);
+      if (word.toLowerCase().startsWith('die ')) return '<span class="text-rose-400 font-bold mr-1">die</span>' + word.slice(4);
+      if (word.toLowerCase().startsWith('das ')) return '<span class="text-emerald-400 font-bold mr-1">das</span>' + word.slice(4);
+      return word;
+    },
+    speak(word, lang) {
+      if (!('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(word);
+      u.lang = (lang || '').toLowerCase() === 'deutsch' ? 'de-DE' : 'en-US';
+      window.speechSynthesis.speak(u);
+    },
+    selectDistractors(target, count = 3) {
+      const others = this.activeWords.filter(w => w.id !== target.id && w.word !== target.word && w.translation !== target.translation);
+      const t1 = others.filter(w => w.pos === target.pos && w.topic === target.topic);
+      const t2 = others.filter(w => w.pos === target.pos && w.topic !== target.topic);
+      const t3 = others.filter(w => w.pos !== target.pos && w.topic === target.topic);
+      const t4 = others.filter(w => w.pos !== target.pos && w.topic !== target.topic);
+      const shuffle = arr => [...arr].sort(() => Math.random() - 0.5);
+      return [...shuffle(t1), ...shuffle(t2), ...shuffle(t3), ...shuffle(t4)].slice(0, count);
+    },
+    switchMode(m) {
+      this.mode = m;
+      if (m === 'adaptive') this.nextQuiz();
+      if (m === 'match') this.initMatch(this.matchSize);
+    },
+    toggleDirection() {
+      this.direction = this.direction === 'word-to-translation' ? 'translation-to-word' : 'word-to-translation';
+    },
+    getWordProgress(w) { return this.progressMap[w.key] || 0; },
+    updateProgress(w, ok) {
+      const cur = this.progressMap[w.key] || 0;
+      this.progressMap[w.key] = ok ? Math.min(3, cur + 1) : 0;
+      localStorage.setItem('nocturne_progress', JSON.stringify(this.progressMap));
+    },
+    nextQuiz() {
+      if (this.activeWords.length < 4) return;
+      const target = this.activeWords[Math.floor(Math.random() * this.activeWords.length)];
+      const options = [target, ...this.selectDistractors(target, 3)].sort(() => Math.random() - 0.5);
+      this.quizQuestion = { target, options };
+      this.selectedOptionId = null;
+    },
+    answerQuiz(opt) {
+      if (this.selectedOptionId) return;
+      this.selectedOptionId = opt.id;
+      const ok = opt.id === this.quizQuestion.target.id;
+      this.updateProgress(this.quizQuestion.target, ok);
+      if (ok) setTimeout(() => this.nextQuiz(), 380);
+    },
+    getQuizOptionClass(opt) {
+      if (!this.selectedOptionId) return 'btn-secondary bg-neutral-100 dark:bg-neutral-950';
+      if (opt.id === this.quizQuestion.target.id) return 'bg-emerald-500/20 border-emerald-500 text-emerald-300';
+      if (opt.id === this.selectedOptionId) return 'bg-rose-500/20 border-rose-500 text-rose-300';
+      return 'opacity-40';
+    },
+    decideCard(ok) {
+      if (!this.currentCard) return;
+      this.updateProgress(this.currentCard, ok);
+      this.isFlipped = false;
+      this.cardIndex++;
+    },
+    startBlitz() {
+      this.blitzScore = 0;
+      this.blitzTimeLeft = 60;
+      this.blitzActive = true;
+      this.nextBlitzItem();
+      clearInterval(this.blitzTimer);
+      this.blitzTimer = setInterval(() => {
+        this.blitzTimeLeft--;
+        if (this.blitzTimeLeft <= 0) {
+          this.blitzActive = false;
+          clearInterval(this.blitzTimer);
+        }
+      }, 1000);
+    },
+    nextBlitzItem() {
+      const target = this.activeWords[Math.floor(Math.random() * this.activeWords.length)];
+      const isTrue = Math.random() < 0.5;
+      const shown = isTrue ? target : (this.selectDistractors(target, 1)[0] || target);
+      this.blitzItem = { target, shown, isTrue: shown.id === target.id };
+    },
+    answerBlitz(ans) {
+      if (ans === this.blitzItem.isTrue) {
+        this.blitzScore++;
+        if (this.blitzScore > this.blitzHighScore) {
+          this.blitzHighScore = this.blitzScore;
+          localStorage.setItem('nocturne_blitz_high', String(this.blitzHighScore));
+        }
+      }
+      this.nextBlitzItem();
+    },
+    initMatch(size) {
+      this.matchSize = size;
+      const pairs = [...this.activeWords].sort(() => Math.random() - 0.5).slice(0, size / 2);
+      const tiles = [];
+      pairs.forEach(w => {
+        tiles.push({ tileId: w.id + '_w', pairId: w.id, type: 'word', text: w.word, lang: w.lang, matched: false });
+        tiles.push({ tileId: w.id + '_t', pairId: w.id, type: 'translation', text: w.translation, lang: w.lang, matched: false });
+      });
+      this.matchTiles = tiles.sort(() => Math.random() - 0.5);
+      this.selectedTileId = null;
+    },
+    tapTile(tile) {
+      if (!this.selectedTileId) { this.selectedTileId = tile.tileId; return; }
+      const first = this.matchTiles.find(t => t.tileId === this.selectedTileId);
+      if (first && first.tileId !== tile.tileId && first.pairId === tile.pairId && first.type !== tile.type) {
+        first.matched = true;
+        tile.matched = true;
+      }
+      this.selectedTileId = null;
+    },
+    savePacks() { localStorage.setItem('nocturne_packs_v2', JSON.stringify(this.packs)); },
+    selectAllPacks(val) { this.packs.forEach(p => p.active = val); this.savePacks(); },
+    deletePack(id) { this.packs = this.packs.filter(p => p.id !== id); this.savePacks(); },
+    importJson() {
+      try {
+        const parsed = JSON.parse(this.importJsonText);
+        const arr = Array.isArray(parsed) ? parsed : [parsed];
+        arr.forEach((p, i) => {
+          const words = (p.words || []).map(w => ({
+            ...w,
+            topic: ALLOWED_TOPICS.find(t => t.toLowerCase() === String(w.topic || '').trim().toLowerCase()) || 'Другое'
+          }));
+          this.packs.unshift({ ...p, words, id: 'custom_' + Date.now() + '_' + i, active: true });
+        });
+        this.savePacks();
+        this.importJsonText = '';
+      } catch (e) {
+        // ignore invalid json
+      }
+    },
+    copyPrompt() { navigator.clipboard.writeText(this.aiPrompt); }
+  }
+}).mount('#app');
+</script>
+</body>
+</html>
